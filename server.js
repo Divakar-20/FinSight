@@ -62,7 +62,7 @@ app.use((err, _req, res, _next) => {
     return res.status(413).json({ ok: false, error: 'File too large (max 10 MB)' });
   }
   if (err instanceof require('multer').MulterError) return res.status(400).json({ ok: false, error: err.message });
-  if (err.message?.includes('upload CSV files only')) return res.status(415).json({ ok: false, error: err.message });
+  if (/upload a CSV or Excel workbook/i.test(err.message || '')) return res.status(415).json({ ok: false, error: err.message });
   res.status(500).json({ ok: false, error: 'Internal server error' });
 });
 
@@ -74,3 +74,4 @@ app.listen(PORT, () => {
   console.log(`\n  FinSight backend running at http://localhost:${PORT}`);
   console.log(`  API docs: see README.md\n`);
 });
+
