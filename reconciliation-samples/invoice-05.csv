@@ -1,0 +1,2 @@
+"invoice_number","case","po_amount","reference","mode","vendor","receipt_amount","paid_amount","amount"
+"INV-2405","Receipt amount mismatch","56200","","Bank transfer","Metro Components","54000","0","56200"
