@@ -12,6 +12,7 @@
 const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
+const fs      = require('fs');
 
 const app = express();
 
@@ -22,9 +23,12 @@ app.use(cors({ origin: process.env.CORS_ORIGIN || `http://localhost:${process.en
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Serve the frontend (index.html + static assets) from project root
-app.use(['/backend', '/data', '/uploads', '/node_modules'], (_req, res) => res.status(404).send('Not found'));
+// Serve static frontend build (public/) + static files
+app.use(['/backend', '/data', '/uploads/reconcile', '/node_modules'], (_req, res) => res.status(404).send('Not found'));
 app.use((req, res, next) => /\.(db|db-shm|db-wal|env)$/i.test(req.path) ? res.status(404).send('Not found') : next());
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/reconciliation-samples', express.static(path.join(__dirname, 'reconciliation-samples')));
+app.use('/outputs', express.static(path.join(__dirname, 'outputs')));
 app.use(express.static(__dirname));
 
 // ──────────────────────────────────────────────
@@ -50,26 +54,30 @@ app.get('/{*splat}', (req, res) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ ok: false, error: 'Route not found' });
   }
-  res.sendFile(path.join(__dirname, 'index.html'));
+  const publicIndex = path.join(__dirname, 'public', 'index.html');
+  if (fs.existsSync(publicIndex)) {
+    return res.sendFile(publicIndex);
+  }
+  res.status(404).send('Not found');
 });
 
 // ──────────────────────────────────────────────
 // Global error handler
 // ──────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
-  console.error('[ERROR]', err.message);
+  console.error('[ERROR]', err.stack || err.message);
   if (err.code === 'LIMIT_FILE_SIZE') {
     return res.status(413).json({ ok: false, error: 'File too large (max 10 MB)' });
   }
   if (err instanceof require('multer').MulterError) return res.status(400).json({ ok: false, error: err.message });
   if (/upload a CSV or Excel workbook/i.test(err.message || '')) return res.status(415).json({ ok: false, error: err.message });
-  res.status(500).json({ ok: false, error: 'Internal server error' });
+  res.status(500).json({ ok: false, error: err.message || 'Internal server error' });
 });
 
 // ──────────────────────────────────────────────
 // Start
 // ──────────────────────────────────────────────
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3005;
 app.listen(PORT, () => {
   console.log(`\n  FinSight backend running at http://localhost:${PORT}`);
   console.log(`  API docs: see README.md\n`);
